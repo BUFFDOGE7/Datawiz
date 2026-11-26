@@ -39,6 +39,38 @@ function participantDatasets(sheets, metric) {
   }));
 }
 
+function showWidestStepsGap(sheets) {
+  const byDate = new Map();
+  for (const sheet of sheets) {
+    for (const { date, value } of readings(sheet, 'steps_count')) {
+      if (value === null) continue;
+      if (!byDate.has(date)) byDate.set(date, []);
+      byDate.get(date).push({ name: sheet.name, value });
+    }
+  }
+
+  const comparisons = [...byDate.entries()]
+    .filter(([, values]) => values.length >= 2)
+    .map(([date, values]) => {
+      const lowest = values.reduce((a, b) => a.value < b.value ? a : b);
+      const highest = values.reduce((a, b) => a.value > b.value ? a : b);
+      return { date, values, lowest, highest, gap: highest.value - lowest.value };
+    })
+    .sort((a, b) => b.gap - a.gap);
+
+  const answer = document.querySelector('#research-answer');
+  if (!comparisons.length) {
+    answer.textContent = 'There are not enough numeric step counts on a shared date to calculate a gap.';
+    return;
+  }
+
+  const result = comparisons[0];
+  const formattedDate = new Intl.DateTimeFormat('en', {
+    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+  }).format(new Date(`${result.date}T00:00:00Z`));
+  answer.textContent = `The widest gap was on ${formattedDate}: ${result.highest.name} recorded ${result.highest.value.toLocaleString()} steps and ${result.lowest.name} recorded ${result.lowest.value.toLocaleString()}, a difference of ${result.gap.toLocaleString()} steps. ${result.values.length} participants had numeric step counts that day.`;
+}
+
 async function drawCharts() {
   const response = await fetch('/api/data');
   const sheets = await response.json();
@@ -77,6 +109,7 @@ async function drawCharts() {
   }
   draw('total', 'bar', 'Steps', [{ label: 'Class total', data: totals }]);
   draw('mean', 'line', 'Steps', [{ label: 'Mean per participant', data: means }]);
+  showWidestStepsGap(sheets);
 }
 
 drawCharts().catch(error => {

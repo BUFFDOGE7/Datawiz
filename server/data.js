@@ -8,8 +8,6 @@ async function fetchText(url) {
 }
 
 async function sheetNames(workbookUrl) {
-  // Google's HTML viewer lists each tab's name and gid in its menu script.
-  // Read only those fields. JSON5 decodes escaped characters in the name.
   const html = await fetchText(`${workbookUrl}/htmlview`);
   const menuEntry = /items\.push\(\{\s*name:\s*("(?:\\.|[^"\\])*"),\s*pageUrl:\s*"(?:\\.|[^"\\])*",\s*gid:\s*"(\d+)"/g;
   const names = new Map();
@@ -19,7 +17,6 @@ async function sheetNames(workbookUrl) {
   return names;
 }
 
-// Column A names the series. Columns B onward pair a cell with its date from row 2.
 function readSeries(csv, gid, name) {
   const rows = parse(csv, { bom: true, relax_column_count: true });
   const dates = rows[1];
